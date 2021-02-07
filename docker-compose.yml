@@ -1,0 +1,66 @@
+version: "3"
+services:
+  nginx:
+    restart: always
+    depends_on:
+      - api
+      - client
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./nginx
+    ports:
+      - "3050:80"
+
+  postgres:
+    # image: "postgres:13-alpine"
+    image: "postgres:latest"
+    environment:
+      - POSTGRES_PASSWORD=postgres_password
+
+  redis:
+    # image: "redis:6-alpine"
+    image: "redis:latest"
+
+  api:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./server
+    volumes:
+      # don't override this folder inside container
+      - /app/node_modules
+      # else map host filesystem into container
+      - ./server:/app
+    environment:
+      # redis is the name of the service
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PGUSER=postgres
+      # postgres is the name of the service
+      - PGHOST=postgres
+      - PGDATABASE=postgres
+      - PGPASSWORD=postgres_password
+      - PGPORT=5432
+
+  client:
+    stdin_open: true
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./client
+    volumes:
+      # preserve this file inside the container
+      - /app/node_modules
+      # share everything in client dir with app folder inside container
+      - ./client:/app
+
+  worker:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./worker
+    volumes:
+      # preserve this file inside the container
+      - /app/node_modules
+      # share everything in worker dir with app folder inside container
+      - ./worker:/app
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
