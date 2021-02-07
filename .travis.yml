@@ -1,0 +1,30 @@
+sudo: required
+services:
+  - docker
+
+# build the testable versions of each container
+before_install:
+  - docker build -t jordanrolph/react-test -f ./client/Dockerfile.dev ./client
+  # TODO: build testable container for server
+  # TODO: build testable container for worker
+
+# run jest tests for each test container
+script:
+  - docker run -e CI=true jordanrolph/react-test npm test -- --coverage
+  # TODO: run server test scripts
+  # TODO: run worker test scripts
+
+# build the prod images and push to dockerhub
+after_success:
+  # build prod images
+  - docker build -t jordanrolph/multi-client ./client
+  - docker build -t jordanrolph/multi-nginx ./nginx
+  - docker build -t jordanrolph/multi-server ./server
+  - docker build -t jordanrolph/multi-worker ./worker
+  # authenticate with docker hub using env vars held by travis CI
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+  # push built prod images to docker hub
+  - docker push jordanrolph/multi-client
+  - docker push jordanrolph/multi-nginx
+  - docker push jordanrolph/multi-server
+  - docker push jordanrolph/multi-worker
